@@ -1,4 +1,4 @@
-data "aws_iam_policy_document" "eks_cluster_autoscaler_assume_role_policy" {
+data "aws_iam_policy_document" "aws_load_balancer_controller_assume_role_policy" {
   statement {
     actions = ["sts:AssumeRoleWithWebIdentity"]
     effect  = "Allow"
@@ -6,7 +6,7 @@ data "aws_iam_policy_document" "eks_cluster_autoscaler_assume_role_policy" {
     condition {
       test     = "StringEquals"
       variable = "${replace(aws_iam_openid_connect_provider.eks.url, "https://", "")}:sub"
-      values   = ["system:serviceaccount:kube-system:cluster-autoscaler"]
+      values   = ["system:serviceaccount:kube-system:aws-load-balancer-controller"]
     }
 
     principals {
@@ -16,37 +16,21 @@ data "aws_iam_policy_document" "eks_cluster_autoscaler_assume_role_policy" {
   }
 }
 
-resource "aws_iam_role" "eks_cluster_autoscaler_v2" {
-  assume_role_policy = data.aws_iam_policy_document.eks_cluster_autoscaler_assume_role_policy.json
-  name               = "eks-cluster-autoscaler_v2"
+resource "aws_iam_role" "aws_load_balancer_controller" {
+  assume_role_policy = data.aws_iam_policy_document.aws_load_balancer_controller_assume_role_policy.json
+  name               = "aws-load-balancer-controller-v2-new"
 }
 
-resource "aws_iam_policy" "eks_cluster_autoscaler_v2" {
-  name = "eks-cluster-autoscaler_v2"
-
-  policy = jsonencode({
-    Statement = [{
-      Action = [
-                "autoscaling:DescribeAutoScalingGroups",
-                "autoscaling:DescribeAutoScalingInstances",
-                "autoscaling:DescribeLaunchConfigurations",
-                "autoscaling:DescribeTags",
-                "autoscaling:SetDesiredCapacity",
-                "autoscaling:TerminateInstanceInAutoScalingGroup",
-                "ec2:DescribeLaunchTemplateVersions"
-            ]
-      Effect   = "Allow"
-      Resource = "*"
-    }]
-    Version = "2012-10-17"
-  })
+resource "aws_iam_policy" "aws_load_balancer_controller" {
+  policy = file("./AWSLoadBalancerController.json")
+  name   = "AWSLoadBalancerController_v2.1"
 }
 
-resource "aws_iam_role_policy_attachment" "eks_cluster_autoscaler_attach" {
-  role       = aws_iam_role.eks_cluster_autoscaler_v2.name
-  policy_arn = aws_iam_policy.eks_cluster_autoscaler_v2.arn
+resource "aws_iam_role_policy_attachment" "aws_load_balancer_controller_attach" {
+  role       = aws_iam_role.aws_load_balancer_controller.name
+  policy_arn = aws_iam_policy.aws_load_balancer_controller.arn
 }
 
-output "eks_cluster_autoscaler_arn" {
-  value = aws_iam_role.eks_cluster_autoscaler_v2.arn
+output "aws_load_balancer_controller_role_arn" {
+  value = aws_iam_role.aws_load_balancer_controller.arn
 }
